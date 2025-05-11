@@ -6,6 +6,8 @@ dist/
 wheels/
 *.egg-info
 .DS_Store
+.env
+chroma_db
 
 # Virtual environments
 .venv
