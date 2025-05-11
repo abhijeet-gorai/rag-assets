@@ -234,10 +234,10 @@ class MultimodalPdfReader:
 
         try:
             summary = self._image_llm.chat_with_image(
-                image=image_base64,
+                images=[image_base64],
                 prompt=user_prompt,
                 system_message=system_prompt,
-                convert_image_to_base64=False,
+                convert_images_to_base64=False,
             )
         except Exception as e:
             logger.error("Failed to process image element: %s", e)

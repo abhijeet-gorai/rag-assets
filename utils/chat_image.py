@@ -12,7 +12,7 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, AnyM
 class ChatWithImage:
     """
     ChatWithImage wraps a vision LLM to allow a user to chat with an LLM that accepts an image and text,
-    with session-based chat history. It enforces that only one image is allowed per session and that a system message
+    with session-based chat history. It enforces that upto 5 images are allowed per session and that a system message
     can only be set at the beginning of a session.
     """
 
@@ -58,12 +58,12 @@ class ChatWithImage:
         # Dictionary to store session histories.
         # Each session_id maps to a dict with:
         #   - "history": list of messages (both user and assistant)
-        #   - "image_used": bool indicating if an image has been sent already.
+        #   - "num_images": count of images that has been sent already.
         self.chat_sessions: Dict[str, Dict[str, Any]] = {}
 
     def __get_message(
         self,
-        image_base64: Optional[str],
+        image_base64: List[str],
         prompt_text: str,
         system_message: str = ""
     ) -> List[Union[SystemMessage, HumanMessage]]:
@@ -71,17 +71,18 @@ class ChatWithImage:
         Build a message list with the given image and prompt text.
         If a system message is provided, it is prepended to the message list.
 
-        :param image_base64: Base64 encoded image string (or None if no image is provided).
+        :param image_base64: List of Base64 encoded image strings (or [] if no image is provided).
         :param prompt_text: The text prompt.
         :param system_message: An optional system message.
         :return: A list of messages (SystemMessage and HumanMessage).
         """
         content: List[Dict[str, str]] = [{"type": "text", "text": prompt_text}]
         if image_base64:
-            content.append({
-                "type": "image_url",
-                "image_url": {"url": image_base64}
-            })
+            for im_base64 in image_base64:
+                content.append({
+                    "type": "image_url",
+                    "image_url": {"url": im_base64}
+                })
         message = HumanMessage(content=content)
         if system_message:
             sys_message = SystemMessage(content=system_message)
@@ -141,11 +142,11 @@ class ChatWithImage:
     def chat_with_image(
         self,
         prompt: str,
-        image: Optional[Union[str, ImageFile]] = None,
+        images: List[Union[str, ImageFile]] = [],
         system_message: str = "",
         session_id: Optional[str] = None,
         stream: bool = False,
-        convert_image_to_base64: bool = True,
+        convert_images_to_base64: bool = True,
     ) -> Union[str, Iterator[BaseMessageChunk]]:
         """
         Chat with the vision LLM.
@@ -153,29 +154,31 @@ class ChatWithImage:
         This method sends a prompt (with an optional image) to the LLM. When a session_id is provided,
         it maintains a conversation history across calls. The method enforces that:
           - A system message can only be set at the beginning of a session.
-          - Only one image is allowed per session.
+          - Upto five images is allowed per session.
         When streaming is enabled with a session_id, it yields tokens from the LLM as they arrive and updates the chat history.
 
         :param prompt: The text prompt.
-        :param image: The image input (a filepath or PIL ImageFile). Pass None if no image is to be provided.
+        :param images: The image input (List of filepaths or PIL ImageFile). Pass [] if no image is to be provided.
         :param system_message: A system message to include. This can only be provided in the first message of a session.
         :param session_id: Optional session identifier for maintaining chat history.
         :param stream: If True, the response is streamed as tokens; otherwise, the full response is returned as a string.
-        :param convert_image_to_base64: If True, converts the image to base64 encoding.
+        :param convert_images_to_base64: If True, converts the images to base64 encoding.
         :return: Either the full response content as a string (when not streaming) or an iterator yielding BaseMessageChunk tokens.
-        :raises ValueError: If a system_message is provided after the first message in a session, or if an image is provided
-                            when one has already been used in that session.
+        :raises ValueError: If a system_message is provided after the first message in a session, or more than five images are provided in a session.
         """
-        image_base64 = None
-        if image is not None:
-            if convert_image_to_base64:
-                image_format = "png"
-                if isinstance(image, str) and (image.lower().endswith("jpeg") or image.lower().endswith("jpg")):
-                    image_format = "jpeg"
-                image_data = self.encode_image_to_base64(image)
-                image_base64 = f"data:image/{image_format};base64,{image_data}"
-            else:
-                image_base64 = image  # assume already base64 encoded
+        image_base64 = []
+        if len(images) > 5:
+            raise ValueError(f"Number of images({len(images)}) exceed the image limit. Upto 5 images are allowed.")
+        if images:
+            for image in images:
+                if convert_images_to_base64:
+                    image_format = "png"
+                    if isinstance(image, str) and (image.lower().endswith("jpeg") or image.lower().endswith("jpg")):
+                        image_format = "jpeg"
+                    image_data = self.encode_image_to_base64(image)
+                    image_base64.append(f"data:image/{image_format};base64,{image_data}")
+                else:
+                    image_base64.append(image)  # assume already base64 encoded
 
         # If no session_id is provided, operate statelessly.
         if session_id is None:
@@ -188,7 +191,7 @@ class ChatWithImage:
         # Retrieve or create session state.
         session = self.chat_sessions.get(session_id, {
             "history": [],
-            "image_used": False,
+            "num_images": 0,
         })
         self.chat_sessions[session_id] = session
 
@@ -200,12 +203,12 @@ class ChatWithImage:
                 sys_msg = SystemMessage(content=system_message)
                 session["history"].append(sys_msg)
 
-        # Enforce that only one image can be passed per session.
+        # Enforce that upto five images can be passed per session.
         if image_base64:
-            if session["image_used"]:
-                raise ValueError("An image has already been provided in this session. Only one image is allowed.")
+            if session["num_images"] + len(image_base64) > 5:
+                raise ValueError("Image limit reached in this session. Upto 5 images are allowed.")
             else:
-                session["image_used"] = True
+                session["num_images"] += len(image_base64)
 
         # Build the new user message (without re-including system message).
         new_messages = self.__get_message(image_base64, prompt, system_message="")

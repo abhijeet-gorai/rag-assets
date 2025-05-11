@@ -140,9 +140,9 @@ class MultiModalRAG:
         user_prompt = image_answer_user_prompt.format(query=query)
         answer = self.image_llm.chat_with_image(
             prompt=user_prompt, 
-            image=image, 
+            images=[image], 
             system_message=image_answer_system_prompt,
-            convert_image_to_base64=False
+            convert_images_to_base64=False
         )
         return answer
 
