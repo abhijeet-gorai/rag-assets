@@ -1,0 +1,26 @@
+[project]
+name = "rag-assets"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "docker>=7.1.0",
+    "docling>=2.31.0",
+    "ipykernel>=6.29.5",
+    "langchain>=0.3.25",
+    "langchain-chroma==0.2.2",
+    "langchain-community==0.3.21",
+    "langchain-elasticsearch>=0.3.2",
+    "langchain-groq>=0.3.2",
+    "langchain-huggingface>=0.2.0",
+    "langchain-milvus>=0.1.10",
+    "openpyxl>=3.1.5",
+    "pdf2image>=1.17.0",
+    "pillow>=11.2.1",
+    "pytesseract>=0.3.13",
+    "python-docx>=1.1.2",
+    "python-dotenv>=1.1.0",
+    "tqdm>=4.67.1",
+    "unstructured[pdf]>=0.17.2",
+]

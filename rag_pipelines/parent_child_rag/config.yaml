@@ -1,0 +1,22 @@
+llm:
+    model_id: "meta-llama/llama-4-scout-17b-16e-instruct"
+    max_tokens: 500
+    temperature: 0
+    top_p: 0.1
+    stop_sequences: []
+vector_db:
+    embedding_modelname: "intfloat/multilingual-e5-small"
+    collection_name: "chroma_collection_parent_child"
+    persist_directory: "./chroma_db"
+    parent_doc_path: "./parent_docs"
+chunking:
+    parent_chunk_size: 2000
+    child_chunk_size: 400
+    parent_chunk_overlap: 200
+    child_chunk_overlap: 40
+    separators: ["\n\n", " "]
+file_reader:
+    pdf:
+        pdfloader: "PYMUPDF"
+    docx:
+        docxloader: "python-docx"
