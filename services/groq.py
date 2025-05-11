@@ -15,7 +15,7 @@ def init_chat_model(
             "Either set it as environment variables or provide it during initialization."
         )
     llm = ChatGroq(
-        model_id=model_id,
+        model=model_id,
         temperature=temperature,
         stop_sequences=stop_sequences,
         max_tokens=max_tokens,
